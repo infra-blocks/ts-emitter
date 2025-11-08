@@ -1,6 +1,6 @@
 {
   "name": "@infra-blocks/emitter",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "This package offers utilities related to Node.Js' event emitters.",
   "keywords": [
     "emitter",
