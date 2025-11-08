@@ -2,6 +2,26 @@ import { expect, sinon } from "@infra-blocks/test";
 import { EmitterLikeBase } from "../../src/index.js";
 
 describe("index", () => {
+  describe("Events", () => {
+    it("should work for types with callable keys", () => {
+      type TestEvents = {
+        ok: () => void;
+        another: (value: string) => void;
+        thisWorks: (value: number, other: string) => number;
+      };
+      // biome-ignore lint/correctness/noUnusedVariables: showcasing compilation
+      class Test extends EmitterLikeBase<TestEvents> {}
+    });
+    it("should not work for types with non-callable keys", () => {
+      type TestEvents = {
+        ok: () => void;
+        notOk: string;
+      };
+      // @ts-expect-error notOk is not callable.
+      // biome-ignore lint/correctness/noUnusedVariables: showcasing lack of compilation
+      class Test extends EmitterLikeBase<TestEvents> {}
+    });
+  });
   describe(EmitterLikeBase.name, () => {
     type TestEvents = {
       test: (message: string) => void;
