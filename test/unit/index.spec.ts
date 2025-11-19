@@ -1,5 +1,5 @@
 import { expect, sinon } from "@infra-blocks/test";
-import { EmitterLikeBase } from "../../src/index.js";
+import { EmitterLikeBase } from "../../src/emitter-like.js";
 
 describe("index", () => {
   describe("Events", () => {

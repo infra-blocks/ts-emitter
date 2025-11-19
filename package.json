@@ -54,5 +54,8 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@infra-blocks/types": "^0.15.0"
   }
 }
