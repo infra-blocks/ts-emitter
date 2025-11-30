@@ -1,4 +1,4 @@
-import type { Factory } from "@infra-blocks/types";
+import type { Factory, MapKeys, SameKeys } from "@infra-blocks/types";
 import type { Events } from "./events.js";
 import type { EventsListeners, ListenersInvocations } from "./listener.js";
 
@@ -187,17 +187,39 @@ function ignoreEach<T>(results: Iterable<T>): void {
   }
 }
 
-// TODO: utility type.
-type MapKeys<E, R> = {
-  [K in keyof E]: R;
-};
+/**
+ * A type meant as the super type of all strategy results mappings.
+ *
+ * It requires that there is a key for every key in E, but the value
+ * should be the one returned by `emit`ting that event with that strategy.
+ */
+export type StrategyResults<E extends Events> = SameKeys<E>;
 
-export type StrategyResults<E extends Events> = MapKeys<E, unknown>;
+/**
+ * A type mapping all events to void return type.
+ *
+ * This means the return value of listeners is swallowed.
+ */
 export type AlwaysVoid<E extends Events> = MapKeys<E, void>;
+
+/**
+ * A type mapping all events to Promise<void> return type.
+ *
+ * This means the return value of listeners is swallowed, but
+ * they are coordinated asynchronously.
+ */
 export type AlwaysPromiseVoid<E extends Events> = MapKeys<E, Promise<void>>;
+
+/**
+ * A type mapping all return values of event listeners to their {@link Promise.all} equivalent.
+ */
 export type AwaitAll<E extends Events> = {
   [K in keyof E]: Promise<Array<ReturnType<E[K]>>>;
 };
+
+/**
+ * A type mapping all return values of event listeners to their {@link Promise.allSettled} equivalent.
+ */
 export type AwaitAllSettled<E extends Events> = {
   [K in keyof E]: Promise<Array<PromiseSettledResult<ReturnType<E[K]>>>>;
 };
