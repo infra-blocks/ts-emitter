@@ -76,10 +76,7 @@ export class Emitter<
    *
    * @returns An {@link Emitter} that uses the default strategy.
    */
-  static create<E extends Events>(): Emitter<
-    E,
-    DefaultStrategy<E, AlwaysVoid<E>>
-  > {
+  static create<E extends Events>(): Emitter<E, DefaultStrategy<E>> {
     return Emitter.withStrategyFactory(defaultStrategy<E>);
   }
 

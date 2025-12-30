@@ -39,8 +39,10 @@ export type EmitStrategy<E extends Events, R extends StrategyResults<E>> = <
  * - `ignoreEach`: invokes all listeners sequentially, ignoring their return values. This
  * is effectively the same as the main callable behavior of the strategy.
  */
-export interface DefaultStrategy<E extends Events, R extends StrategyResults<E>>
-  extends EmitStrategy<E, R> {
+export interface DefaultStrategy<
+  E extends Events,
+  R extends StrategyResults<E> = AlwaysVoid<E>,
+> extends EmitStrategy<E, R> {
   awaitAll<K extends keyof E>(
     event: K,
     ...args: Parameters<E[K]>
@@ -65,12 +67,8 @@ export type InvocationsHandler<E extends Events, R> = <K extends keyof E>(
 
 export function defaultStrategy<E extends Events>(
   eventsListeners: EventsListeners<E>,
-): DefaultStrategy<E, AlwaysVoid<E>>;
-export function defaultStrategy<
-  E extends Events,
-  // TODO: alias AlwaysREturns<E, unknown> for something like ResultsMapping<E> or something.
-  R extends StrategyResults<E>,
->(
+): DefaultStrategy<E>;
+export function defaultStrategy<E extends Events, R extends StrategyResults<E>>(
   eventsListeners: EventsListeners<E>,
   defaultInvocationsHandler: InvocationsHandler<E, R>,
 ): DefaultStrategy<E, R>;

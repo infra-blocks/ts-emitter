@@ -44,7 +44,7 @@ emitter.emit("gogo", "retractablePenus");
 // was that show ever good?
 ```
 
-In addition, the default strategy also exports weird members on emit, just to showcase of what you could do yourself
+In addition, the default strategy also exports weird members on emit, just to showcase what you could do yourself
 if you wanted to support more than one strategy for the same emitter.
 
 ```typescript
@@ -58,7 +58,7 @@ await emitter.emit.awaitEach("gogo", "retractablePenus");
 ```
 
 If you know you always want the `awaitAll` logic, for example, and don't want the weird `emit` attributes, you
-can also create an emitter that does that by default:
+can also create an emitter that does only that:
 
 ```typescript
 type MyEvents = {
@@ -71,21 +71,46 @@ const emitter = Emitter.awaitingAll<MyEvents>();
 const results: Array<boolean> = await emitter.emit("poop", 2.3); // My kid shits a lot. Notice how emit now returns a promise?
 ```
 
-You can customize the behavior of `emit` by passing a strategy factory upon construction:
+You can customize the behavior of `emit` and its typing. For example you could have different strategy
+on different events, by doing so:
 
 ```typescript
-// Creates an emitter that replays events once. So a single emit results in the invocation
-// of the listeners twice. I don't know why you would want that, but it is possible to do.
-const emitter = Emitter.withStrategyFactory<MyEvents>((listeners) => {
-  return <K extends keyof E>(event: K, ...args: Parameters<E[K]>) => {
-    for (const _ of listeners.invocations(event, ...args)){
-      // Forget that result already.
+type Events = {
+  left: () => number;
+  right: (v: number) => string;
+};
+
+type Results = {
+  left: undefined; // We will ignore the return values.
+  right: Promise<string[]>; // We will Promise.all them here.
+};
+
+const emitter = Emitter.withStrategyFactory<
+  Events,
+  Results,
+  EmitStrategy<Events, Results>
+>((listeners) => {
+  return <K extends keyof Events>(
+    event: K,
+    ...args: Parameters<Events[K]>
+  ) => {
+    // Typescript needs a little help with the return typing.
+    switch (event) {
+      case "left":
+        // Fire the listeners and ignore their results.
+        for (const _ of listeners.invocations(event, ...args)) {
+        }
+        return undefined as Results[K];
+      case "right":
+        return Promise.all(
+          listeners.invocations(event, ...args),
+        ) as unknown as Results[K];
     }
-    for (const _ of listeners.invocations(event, ...args)){
-      // Run it twice.
-    }
-  }
-})
+  };
+});
+
+const left = emitter.emit("left"); // Type of left is undefined.
+const right = emitter.emit("right", ...); // Type of right is Promise<string[]>
 ```
 
 Nuff said about that emitter.
@@ -104,9 +129,14 @@ export interface EmitterLike<E extends Events> {
 }
 ```
 
-It's basically to provide a stub for classes that support event registration, but handle emission internally. The interface
-is automatically type safe with regards to the event type. In addition, and `EmitterLikeBase` class is provided if you'd
-like the straigtforward implementations.
+It's basically to provide a common interface for classes that support event registration, but handle emission internally. The interface
+is automatically type safe with regards to the event type.
+
+## EmitterLikeBase base classes
+
+In addition, base classes are provided to implement the `EmitterLike` interface with straightforward implementations.
+`EmitterLikeBase` is a simple base class with an emitter that re-exports the `emit` function to its subclasses with `protected`
+visibility, and implements the `EmitterLike` interface by dispatching to the internal emitter.
 
 Here is a simple example usage:
 ```ts
@@ -124,7 +154,7 @@ export type MyEvents = {
 export class MyEmitterLiker extends EmitterLikeBase<MyEvents, DefaultStrategy<MyEvents, AlwaysVoid<MyEvents>>> {
   private readonly client: MyClient;
 
-  private constructor() {
+  constructor() {
     super({ emitter: Emitter.create<MyEvents>() })
     this.client = new MyClient();
   }
@@ -149,4 +179,20 @@ myEmitterLike.once("connect", () => console.log("connected!"));
 myEmitterLike.once("disconnect", () => console.log("disconnected!"));
 myEmitterLike.on("data", async (stuff) => await db.storeStuff(stuff));
 await myEmitterLike.callMe();
+```
+
+`EmitterLikeBase` is at the top of the hierarchy, and allows maximum configuration. If you're using one of
+the provided strategies, a matching base class exists as well to minimize that pesky fucking typing:
+```typescript
+// As above
+export class MyEmitterLiker extends EmitterLikeBase<MyEvents, DefaultStrategy<MyEvents, AlwaysVoid<MyEvents>>> {
+  constructor() {
+    super({ emitter: Emitter.create<MyEvents>() })
+  }
+}
+
+// Can be rewritten as:
+export class MyEmitterLiker extends DefaultStrategyEmitterLikeBase<MyEvents> {
+  // No need to call the super constructor.
+}
 ```
