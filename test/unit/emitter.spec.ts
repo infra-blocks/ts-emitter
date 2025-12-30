@@ -1,6 +1,6 @@
-import { expect, sinon } from "@infra-blocks/test";
+import { expect, expectTypeOf, sinon } from "@infra-blocks/test";
 import { injectFakeTimersFixtures } from "@infra-blocks/test/mocha/bdd";
-import { Emitter } from "../../src/index.js";
+import { type EmitStrategy, Emitter } from "../../src/index.js";
 
 describe("emitter", () => {
   describe("default strategy", () => {
@@ -443,6 +443,52 @@ describe("emitter", () => {
         expect(secondListener).to.have.been.calledOnceWithExactly(42);
         expect(thirdListener).to.not.have.been.called;
       });
+    });
+  });
+  describe("custom strategy", () => {
+    it("should work as presented in the examples", async () => {
+      type Events = {
+        left: () => number;
+        right: (v: number) => string;
+      };
+
+      type Results = {
+        left: undefined; // We will ignore the return values.
+        right: Promise<string[]>; // We will Promise.all them here.
+      };
+
+      const emitter = Emitter.withStrategyFactory<
+        Events,
+        Results,
+        EmitStrategy<Events, Results>
+      >((listeners) => {
+        return <K extends keyof Events>(
+          event: K,
+          ...args: Parameters<Events[K]>
+        ) => {
+          switch (event) {
+            case "left":
+              // Fire the listeners and ignore their results.
+              for (const _ of listeners.invocations(event, ...args)) {
+              }
+              return undefined as Results[K];
+            case "right":
+              return Promise.all(
+                listeners.invocations(event, ...args),
+              ) as unknown as Results[K];
+          }
+        };
+      });
+      emitter.on("left", () => 42);
+      emitter.on("right", (v) => v.toString());
+      emitter.on("right", (v) => v.toString().repeat(2));
+
+      const left = emitter.emit("left");
+      expectTypeOf(left).toEqualTypeOf<undefined>();
+      expect(left).to.be.undefined;
+      const right = emitter.emit("right", 42);
+      expectTypeOf(right).toEqualTypeOf<Promise<string[]>>();
+      await expect(right).to.eventually.deep.equal(["42", "4242"]);
     });
   });
 });
